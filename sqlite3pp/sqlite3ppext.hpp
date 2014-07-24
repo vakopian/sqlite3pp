@@ -21,7 +21,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-#pragma once
+#ifndef SQLITE3PPEXT_H
+#define SQLITE3PPEXT_H
 
 #include "sqlite3pp.hpp"
 #include <map>
@@ -53,7 +54,7 @@ namespace sqlite3pp
       void result(char const* value, bool fstatic = true);
       void result(void const* value, int n, bool fstatic = true);
       void result();
-      void result(std::nullptr_t);
+      void result(null_type);
       void result_copy(int idx);
       void result_error(char const* msg);
 
@@ -363,3 +364,4 @@ namespace sqlite3pp
 
 } // namespace sqlite3pp
 
+#endif

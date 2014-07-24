@@ -21,7 +21,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-#pragma once
+#ifndef SQLITE3PP_H
+#define SQLITE3PP_H
 
 #include <string>
 #include <stdexcept>
@@ -30,7 +31,6 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/function.hpp>
-#include <cstdint>
 #include <boost/numeric/conversion/cast.hpp>
 
 namespace sqlite3pp
@@ -41,11 +41,13 @@ namespace sqlite3pp
         class aggregate;
     }
 
+    class null_type {};
+    extern null_type ignore;
 
     template <class T>
     class nullable_wrapper
     {
-        mutable T& val_;
+        T& val_;
         const T& null_value_;
     public:
         explicit nullable_wrapper(T& val, const T& null_value) : val_(val), null_value_(null_value) {}
@@ -58,7 +60,7 @@ namespace sqlite3pp
 
     int enable_shared_cache(bool fenable);
 
-    class database
+    class database : boost::noncopyable
     {
         friend class statement;
         friend class database_error;
@@ -72,15 +74,11 @@ namespace sqlite3pp
         typedef boost::function<void (int, char const*, char const*, long long int)> update_handler;
         typedef boost::function<int (int, char const*, char const*, char const*, char const*)> authorize_handler;
 
-        explicit database(char const* dbname = nullptr);
-        database(const database&) = delete;
-        database& operator=(const database&) = delete;
-        database(database&&);
-        database& operator=(database&&);
+        explicit database(char const* dbname = 0);
         ~database();
 
         int connect(char const* dbname);
-        int connect_v2(char const* dbname, int flags, char const* vfs = nullptr);
+        int connect_v2(char const* dbname, int flags, char const* vfs = 0);
         int disconnect();
 
         int attach(char const* dbname, char const* name);
@@ -124,7 +122,7 @@ namespace sqlite3pp
         explicit database_error(database& db);
     };
 
-    class statement
+    class statement : boost::noncopyable
     {
      public:
         void prepare(char const* stmt);
@@ -144,7 +142,7 @@ namespace sqlite3pp
         statement& bind(int idx, char const* value, bool fstatic = true);
         statement& bind(int idx, void const* value, int n, bool fstatic = true);
         statement& bind(int idx);
-        statement& bind(int idx, std::nullptr_t);
+        statement& bind(int idx, null_type);
 
         statement& bind(char const* name, int value);
         statement& bind(char const* name, double value);
@@ -154,23 +152,15 @@ namespace sqlite3pp
         statement& bind(char const* name, char const* value, bool fstatic = true);
         statement& bind(char const* name, void const* value, int n, bool fstatic = true);
         statement& bind(char const* name);
-        statement& bind(char const* name, std::nullptr_t);
+        statement& bind(char const* name, null_type);
 
         int step();
 
         /// reset a prepared statement ready to be re-executed, doesn't reset bindings
         statement& reset();
 
-        statement(statement&&);
-
-     private:
-        statement(const statement&) = delete;
-        statement& operator=(const statement&) = delete;
-        statement& operator=(statement&&) = delete;
-
-
      protected:
-        statement(database& db, char const* stmt = nullptr);
+        statement(database& db, char const* stmt = 0);
         ~statement();
 
 
@@ -207,7 +197,7 @@ namespace sqlite3pp
             int idx_;
         };
 
-        explicit command(database& db, char const* stmt = nullptr);
+        explicit command(database& db, char const* stmt = 0);
 
         bindstream binder(int idx = 1);
 
@@ -336,7 +326,7 @@ namespace sqlite3pp
             int rc_;
         };
 
-        explicit query(database& db, char const* stmt = nullptr);
+        explicit query(database& db, char const* stmt = 0);
 
         int column_count() const;
 
@@ -402,9 +392,9 @@ namespace sqlite3pp
         return sqlite3_column_blob(stmt_, idx);
     }
 
-    template <> inline std::nullptr_t query::rows::get<std::nullptr_t>(int idx) const
+    template <> inline null_type query::rows::get<null_type>(int idx) const
     {
-        return nullptr;
+        return ignore;
     }
 
     class transaction : boost::noncopyable
@@ -423,3 +413,4 @@ namespace sqlite3pp
 
 } // namespace sqlite3pp
 
+#endif

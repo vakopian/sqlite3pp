@@ -26,6 +26,7 @@
 #include <memory>
 #include <cstdlib>
 #include <cstdio>
+#include <boost/shared_ptr.hpp>
 
 
 #define THROW_ERR(ret) do { if ((ret) != SQLITE_OK) throw database_error(db_); } while(0);
@@ -37,6 +38,8 @@
 
 namespace sqlite3pp
 {
+    null_type ignore;
+
     namespace
     {
         int busy_handler_impl(void* p, int cnt)
@@ -77,7 +80,7 @@ namespace sqlite3pp
     }
 
     database::database(char const* dbname):
-        db_(nullptr)
+        db_(0)
     {
         if (dbname) 
         {
@@ -91,18 +94,6 @@ namespace sqlite3pp
     {
         disconnect();
     }
-
-    database::database(database&& other):
-        db_(other.db_)
-        , bh_(other.bh_)
-        , ch_(other.ch_)
-        , rh_(other.rh_)
-        , uh_(other.uh_)
-        , ah_(other.ah_)
-    {
-        other.db_ = nullptr;
-    }
-
 
     int database::connect(char const* dbname)
     {
@@ -123,7 +114,7 @@ namespace sqlite3pp
         int rc = SQLITE_OK;
         if (db_) {
             rc = sqlite3_close(db_);
-            db_ = nullptr;
+            db_ = 0;
         }
 
         return rc;
@@ -201,7 +192,7 @@ namespace sqlite3pp
     {
         va_list ap;
         va_start(ap, sql);
-        std::unique_ptr<char, void (*)(void *)> msql(sqlite3_vmprintf(sql, ap), sqlite3_free);
+        boost::shared_ptr<char> msql(sqlite3_vmprintf(sql, ap), sqlite3_free);
         va_end(ap);
 
         return eexecute(msql.get());
@@ -272,9 +263,9 @@ namespace sqlite3pp
         int rc = SQLITE_OK;
         if (stmt_) {
             rc = finish_impl(stmt_);
-            stmt_ = nullptr;
+            stmt_ = 0;
         }
-        tail_ = nullptr;
+        tail_ = 0;
 
         return rc;
     }
@@ -355,7 +346,7 @@ namespace sqlite3pp
         return *this;
     }
 
-    statement& statement::bind(int idx, std::nullptr_t)
+    statement& statement::bind(int idx, null_type)
     {
         bind(idx);
         return *this;
@@ -425,23 +416,12 @@ namespace sqlite3pp
         return *this;
     }
 
-    statement& statement::bind(char const* name, std::nullptr_t)
+    statement& statement::bind(char const* name, null_type)
     {
         bind(name);
         return *this;
     }
 
-
-    statement::statement(statement&& other):
-        db_(other.db_)
-        , stmt_(other.stmt_)
-        , statement_(move(other.statement_))
-        , tail_(other.tail_)
-    {
-        other.stmt_ = nullptr;
-        other.statement_.clear();
-        other.tail_ = nullptr;
-    }
 
     command::bindstream::bindstream(command& cmd, int idx) : cmd_(cmd), idx_(idx)
     {
@@ -636,7 +616,7 @@ namespace sqlite3pp
     int transaction::commit()
     {
         database* db = db_;
-        db_ = nullptr;
+        db_ = 0;
         int rc = db->eexecute("COMMIT");
         return rc;
     }
@@ -644,7 +624,7 @@ namespace sqlite3pp
     int transaction::rollback()
     {
         database* db = db_;
-        db_ = nullptr;
+        db_ = 0;
         int rc = db->eexecute("ROLLBACK");
         return rc;
     }
