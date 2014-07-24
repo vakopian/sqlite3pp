@@ -414,3 +414,4 @@ namespace sqlite3pp
 } // namespace sqlite3pp
 
 #endif
+
